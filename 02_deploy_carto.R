@@ -15,6 +15,7 @@ library("shiny")
 library("shinyWidgets")
 library("dplyr")
 library("rsconnect")
+library("streamgraph")
 
 # 1 DEPLOYING APP ------------------------------------------------------------------------------------------------------
 #runApp("D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/app")

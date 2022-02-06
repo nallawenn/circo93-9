@@ -17,6 +17,7 @@ library("shiny")
 library("shinyWidgets")
 library("dplyr")
 library("rsconnect")
+library("streamgraph")
 
 
 
@@ -57,7 +58,17 @@ ui <- fluidPage(
   prettySwitch(
     inputId = "granu",
     label = "Bureaux de vote"
-  ),
+   ),
   leafletOutput("leafletMap"),
+  h3("Evolution par commune"),
+  fluidRow(
+    column(4,h4('Bondy', style="text-align:center"), streamgraphOutput('sg1')),
+    column(4,h4('Noisy-le-Sec', style="text-align:center"), streamgraphOutput('sg2')),
+    column(4,h4('Romainville', style="text-align:center"), streamgraphOutput('sg3'))
+  ),
+  fluidRow(
+    column(4,h4('Les Lilas', style="text-align:center"), streamgraphOutput('sg4')),
+    column(4,h4('Le Pre-Saint-Gervais', style="text-align:center"), streamgraphOutput('sg5'))
+  ),
   dataTableOutput("current")
 )

@@ -47,7 +47,7 @@ forval t = 1/2 {
 
 	* Liste des candididats
 	if `t' == 1 {
-		rename voix voix_NDA
+		rename voix voix_DLF
 		rename v33 voix_RN
 		rename v40 voix_LREM
 		rename v47 voix_PS
@@ -454,7 +454,7 @@ ta parti, m
           LO |         73        3.63       29.52
           LR |         73        3.63       33.15
         LREM |         73        3.63       36.78
-         NDA |         72        3.58       40.36
+         DLF |         72        3.58       40.36
          NPA |         38        1.89       42.25
          PCF |         73        3.63       45.87
       PIRATE |         28        1.39       47.27
@@ -480,24 +480,24 @@ replace parti = "2"  if parti == "abs" // ABSTENTION
 replace parti = "3"  if parti == "nul" // NULS
 replace parti = "4"  if parti == "bla" // BLANCS
 replace parti = "5"  if parti == "LO"  
-replace parti = "6"  if parti == "NPA"
-replace parti = "7"  if parti == "POI"
+replace parti = "6"  if parti == "POI"
+replace parti = "7"  if parti == "NPA"
 replace parti = "8"  if parti == "LFI"
-replace parti = "9"  if parti == "PIRATE"
-replace parti = "10" if parti == "ANIM"
-replace parti = "11" if parti == "CIT_DVG"
-replace parti = "12" if parti == "DVG"
-replace parti = "13" if parti == "EELV"
-replace parti = "14" if parti == "PCF"
-replace parti = "15" if parti == "PS"
+replace parti = "9"  if parti == "PCF"
+replace parti = "10" if parti == "PIRATE"
+replace parti = "11" if parti == "ANIM"
+replace parti = "12" if parti == "EELV"
+replace parti = "13" if parti == "PS"
+replace parti = "14" if parti == "CIT_DVG"
+replace parti = "15" if parti == "DVG"
 replace parti = "16" if parti == "RDG"
 replace parti = "17" if parti == "UDMF"
 replace parti = "18" if parti == "VOLT"
 replace parti = "19" if parti == "LREM"
-replace parti = "20" if parti == "UPR"
-replace parti = "21" if parti == "UDI"
-replace parti = "22" if parti == "LR"
-replace parti = "23" if parti == "NDA"
+replace parti = "20" if parti == "UDI"
+replace parti = "21" if parti == "LR"
+replace parti = "22" if parti == "DLF"
+replace parti = "23" if parti == "UPR"
 replace parti = "24" if parti == "RN"
 replace parti = "25" if parti == "AUTRE"
 
@@ -506,24 +506,24 @@ label define parti 1 "INSCRITS" ///
 				   3 "NULS" ///
 				   4 "BLANCS" ///
 				   5 "LO"   ///
-				   6 "NPA" ///
-				   7 "POI" ///
+				   6 "POI" ///
+				   7 "NPA" ///
 				   8 "LFI" ///
-				   9 "PIRATE" ///
-				  10 "ANIM" ///
-				  11 "CIT_DVG" ///
-				  12 "DVG" ///
-				  13 "EELV" ///
-				  14 "PCF" ///
-				  15 "PS" ///
+				   9 "PCF" ///
+				  10 "PIRATE" ///
+				  11 "ANIM" ///
+				  12 "EELV" ///
+				  13 "PS" ///
+				  14 "CIT_DVG" ///
+				  15 "DVG" ///
 				  16 "RDG" ///
 				  17 "UDMF" ///
 				  18 "VOLT" ///
 				  19 "LREM" ///
-				  20 "UPR" ///
-				  21 "UDI" ///
-				  22 "LR" ///
-				  23 "NDA" ///
+				  20 "UDI" ///
+				  21 "LR" ///
+				  22 "DLF" ///
+				  23 "UPR" ///
 				  24 "RN" ///
 				  25 "AUTRE", replace
 destring parti, replace
@@ -562,9 +562,9 @@ sort com bvote parti
 gen id = com + bvote
 keep  id com libcom bvote parti PRS17_T1-REG21_T2
 order id com libcom bvote parti PRS17_T1-REG21_T2
+replace libcom = "Le Pre-Saint-Gervais" if libcom == "Le Pré-Saint-Gervais"
 save "D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/app/dat/scores_bvote", replace
 export excel using "D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/tab/resultats_17_21.xlsx", sheet(eff_bvot) sheetreplace first(var)
-
 
 * Vérif niveau bvote & export
 drop id
@@ -580,10 +580,3 @@ keep  id com libcom parti PRS17_T1-REG21_T2
 order id com libcom parti PRS17_T1-REG21_T2
 save "D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/app/dat/scores_com", replace
 export excel using "D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/tab/resultats_17_21.xlsx", sheet(eff_com) sheetreplace first(var)
-use "D:/Dropbox/Documents/Professionnel/POLITIQUE/CIRCO93-9/app/dat/scores_bvote", clear
-recode parti (15 = 8)
-foreach var of varlist PRS17_T1-REG21_T2 {
-	bys parti: egen tot = total(`var')
-	replace `var' = `var' / tot
-	drop tot
-}

@@ -16,13 +16,48 @@ library("shinyWidgets")
 library("dplyr")
 library("rsconnect")
 library("DT")
+library("streamgraph")
+
+# Fonction de labelling du streamgraph (aurait dû être dans le package)
+sg_add_marker <- function(sg, x, label="", stroke_width=0.5, stroke="#7f7f7f", space=5,
+                          y=0, color="#7f7f7f", size=12, anchor="start") {
+
+  if (inherits(x, "Date")) { x <- format(x, "%Y-%m-%d") }
+
+  mark <- data.frame(x=x, y=y, label=label, color=color, stroke_width=stroke_width, stroke=stroke,
+                     space=space, size=size, anchor=anchor, stringsAsFactors=FALSE)
+
+  if (is.null(sg$x$markers)) {
+    sg$x$markers <- mark
+  } else {
+    sg$x$markers <- bind_rows(mark, sg$x$markers)
+  }
+
+  sg
+}
 
 # To-do :
-
 #   - ajouter graphiques
 
 # 2 SERVER -------------------------------------------------------------------------------------------------------------
 server <- function(input, output) {
+  # Données
+  com_reshaped <- read.dta13("dat/scores_com.dta", convert.factors = TRUE)
+  attr(com_reshaped, "variable.labels") <- attr(com_reshaped,"var.labels")
+  com_reshaped <- com_reshaped %>% tidyr::gather("scrutin", "voix", c(PRS17_T1:REG21_T2))
+
+  # Replacement des dates
+  com_reshaped <- com_reshaped %>% filter(!(scrutin %in% c('PRS17_T2','LGS17_T2','MUN20_T2','DEP21_T2','REG21_T2')))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'PRS17_T1', "1", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'PRS17_T2', "2", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'LGS17_T1', "3", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'LGS17_T2', "4", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'MUN20_T1', "5", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'MUN20_T2', "6", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'DEP21_T1', "7", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'DEP21_T2', "8", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'REG21_T1', "9", scrutin))
+  com_reshaped <- com_reshaped %>% mutate(scrutin= ifelse(scrutin == 'REG21_T2', "10", scrutin))
 
   # 2.1 PRÉPARATION DES DONNÉES ÉLECTORALES --------------------------------------------------------------------------------
   # Import des données
@@ -36,6 +71,12 @@ server <- function(input, output) {
   REACTscores <- reactive({
     if (input$granu == TRUE) { scores_bvote }
     else { scores_com }
+  })
+
+  # Libellé string du niveau de granularité
+  REACTgranu <- reactive({
+    if (input$granu == TRUE) { "Bureaux de vote" }
+    else { "Communes" }
   })
 
   # Liste des variables identifiantes selon la granularité
@@ -96,8 +137,8 @@ server <- function(input, output) {
 
   # Ajout des formes aux données
   REACTdat2 <- reactive({
-     if (input$granu == TRUE) { st_sf(merge(bvote, REACTdat1(), by = 'id', all=TRUE)) }
-     else { st_sf(merge(com, REACTdat1(), by = 'id',  all=TRUE ))}
+    if (input$granu == TRUE) { st_sf(merge(bvote, REACTdat1(), by = 'id', all=TRUE)) }
+    else { st_sf(merge(com, REACTdat1(), by = 'id',  all=TRUE ))}
   })
 
   # 2.3 CARTOGRAPHIE REACTIVE LEAFLET ----------------------------------------------------------------------------------
@@ -130,7 +171,7 @@ server <- function(input, output) {
       addProviderTiles(providers$CartoDB.Positron) %>%
       addPolygons(data = REACTdat2(),            # popup = popupTable(REACTdat2()),
                   label =  sprintf(paste0("<strong>%s</strong><br/>",REACTlabel()),
-                    REACTdat2()$libcom, REACTdat2()$toplot
+                                   REACTdat2()$libcom, REACTdat2()$toplot
                   ) %>% lapply(htmltools::HTML),
                   fillColor = ~pal_gra()(REACTdat2()$toplot),
                   color = 'white',
@@ -141,16 +182,44 @@ server <- function(input, output) {
                     weight = 3,
                     color = "#ffffff",
                     fillOpacity = 1,
-                    bringToFront = TRUE)
+                    bringToFront = TRUE),
+                  group = REACTgranu()
       ) %>%
       addLegend(pal = pal_gra(),
                 values = ~REACTdat2()$toplot,
                 opacity = 0.9,
                 title = NULL,
-                position = "bottomright")
+                position = "bottomright"
+      )
   })
   output$current = renderDataTable({
     REACTscores()
   })
+
+  # Stream graph
+  plot_sg <- function(ville,plotname) {
+    temp <- com_reshaped %>%  filter(!(parti %in% c('INSCRITS'))) %>%
+      filter(libcom == ville)
+    sg <- streamgraph(temp, key="parti", value="voix", date="scrutin", height="500px", width="1000px", scale="continuous") %>%
+      sg_add_marker(1, label = "PRS 2017", stroke = "#FFFFFF", y = -200, color = "grey10") %>%
+      sg_add_marker(3, label = "LGS 2017", stroke = "#FFFFFF", y = -200, color = "grey10") %>%
+      sg_add_marker(5, label = "MUN 2020", stroke = "#FFFFFF", y = -200, color = "grey10") %>%
+      sg_add_marker(7, label = "DEP 2021", stroke = "#FFFFFF", y = -200, color = "grey10") %>%
+      sg_add_marker(9, label = "REG 2021", stroke = "#FFFFFF", y = -200, color = "grey10")
+    sg$x$legend <- TRUE
+    sg$x$x_tick_format <- NULL
+    sg$x$legend_label <- "Choisissez un parti :"
+    sg$x$fill <- "manual"
+    sg$x$palette <- c('#EDECE5','#45BF70','#C7F4E6','#FFFFFF','#EA4491','#192A90','#EE678B','#9CE289','#000000','#BB0200','#7A0200','#3254C2','#FD9C3C','#9B0200','#EDF6F2','#D1122A','#C1826F','#7A2100','#E62154','#F0636A','#00005E','#C48419','#009069','#302573','#F25F48')
+    sg
+  }
+  output$sg1 <- renderStreamgraph(plot_sg('Bondy'))
+  output$sg2 <- renderStreamgraph(plot_sg('Noisy-le-Sec'))
+  output$sg3 <- renderStreamgraph(plot_sg('Romainville'))
+  output$sg4 <- renderStreamgraph(plot_sg('Les Lilas'))
+  output$sg5 <- renderStreamgraph(plot_sg('Le Pre-Saint-Gervais'))
+
 }
+
+# Shiny
 #shinyApp(ui = ui, server = server)
